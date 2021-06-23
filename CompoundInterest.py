@@ -1,32 +1,82 @@
-def interest(start_val, years, multiplier = 1, promo = 0):
-    '''(float, int, float, float) -> float
-    This function takes a starting saving amount <start_val>
-    an amount of years of accumulation <years> and if given, an average yearly
-    expected promotion <promo>, an interest rate <multiplier> and calculates
-    the amount of total money that will be accumulated after the amount of
-    the years specified.
-    REQ: start_val >= 0
-    REQ: years >= 0
-    REQ: multiplier >= 0
-    >>> interest(20000, 10, 1.04, 2000)
-    'You will accumulate $354044.6 after 10 years.'
-    >>> interest(20000, 10, 1.04)
-    'You will accumulate $249727.03 after 10 years.'
-    >>> interest(20000, 10)
-    'You will accumulate $200000 after 10 years.'
-    '''
-    # iterate through the amount of years given.
-    for i in range(0, years):
-        # if it's the first year, multiply by the interest rate
-        if i == 0:
-            total = start_val*multiplier
-        # otherwise
-        else:
-            # increment by the promotion
-            start_val += promo
-            # multiply by the interest rate after incrementing
-            total = (total + start_val)*multiplier
-    # return the total amount, rounding to 2 decimals
-    return "You will accumulate $"+ str(
-        round(total,2)) + " after " + str(years) + " years."
+import pandas as pd
+import pandas_datareader.data as web
+import datetime
 
+class Stock():
+    def __init__(self):
+        self.ticker = None
+        self.start = None
+        self.end = None
+        self.mult = 3
+
+def invest(arr, start=0, dca=5000):
+    for i in range(1, len(arr)):
+        change = arr[i]/arr[i-1]
+        start = (start + dca)*change
+    return start
+    
+def period(arr, year=2000, start=0, dca=5000):
+    print("-"*10 + str(year) + "-" + str(year+(len(arr)-1))+"-"*10)
+    print("With $" + str((len(arr)-1)*dca) + " invested." )
+    first21 = invest(arr, start, dca=dca)
+    return first21
+    
+
+def leveraged(daily_data, mult):
+    """
+    100 => 130 -> 1.3X gain
+    3x that is 1.9X so (1.3X-1)*3 and then add 1.
+    Start any arbitrary val, like 500.
+    """
+    lev_daily_data = [500]
+    for i in range(1, len(daily_data)):
+        unlev_change = daily_data[i]/daily_data[i-1]
+        lev_change = (unlev_change-1)*3+1
+        lev_daily_data.append(lev_daily_data[i-1]*lev_change)
+    return lev_daily_data
+
+def backtest(stock, show_etf_data=False, show_letf_data=False):
+    ticker, start_year, end_year = stock.ticker, stock.start, stock.end
+    mult = stock.mult
+    print("."*20+"loading backtest data for " + ticker + "."*20)
+    start = datetime.datetime(start_year, 3, 1)
+    end = datetime.datetime(end_year, 3, 31)
+    try:
+        SP500 = web.DataReader(ticker, 'yahoo', start, end)["Adj Close"].values.tolist()
+    except:
+        print("PLEASE MAKE SURE YOU ENTER A VALID TICKER!")
+        return
+    TSP500 = leveraged(SP500, mult)
+    # get yearly value by getting every 252nd
+    arr = []
+    skip = 252
+    for i in range(0, len(TSP500), skip):
+        arr.append(TSP500[i])
+    if (show_letf_data):
+        print(arr)
+    init = 0
+    # zombie code :flushed:
+    """
+    for i in range(3):
+        amount = period(arr, start=init, year=start_year)
+        print("${:,.2f}". format(amount))
+        init = amount
+        start_year += len(arr)-1
+    """
+    amount = period(arr, start=init, year=start_year)
+    print("${:,.2f}". format(amount))
+
+
+
+if __name__ == "__main__":
+    """
+    ^GSPC: S&P500
+    QQQ: NASDAQ
+    AMZN: Amazon
+    """
+    stock = Stock()
+    stock.ticker = "AMZN"
+    stock.start = 2000
+    stock.end = 2021
+    stock.mult = 3
+    backtest(stock, show_etf_data=False, show_letf_data=False)
